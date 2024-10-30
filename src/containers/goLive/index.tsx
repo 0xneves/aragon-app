@@ -2,6 +2,8 @@ import React, {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useFormContext} from 'react-hook-form';
 import {Breadcrumb} from '@aragon/ods-old';
+import {PushAPI} from '@pushprotocol/restapi';
+import {JsonRpcSigner} from '@ethersproject/providers';
 import {Button, AlertCard, IconType} from '@aragon/ods';
 import {useNavigate} from 'react-router-dom';
 
@@ -66,12 +68,44 @@ const GoLive: React.FC = () => {
   );
 };
 
+const createPushChannel = async (
+  signer: JsonRpcSigner,
+  title: string,
+  description: string,
+  image: string
+) => {
+  const connectedSigner = await PushAPI.initialize(signer, {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    env: 'prod',
+  });
+
+  if (!connectedSigner) {
+    console.log('Error connecting to Push API');
+    return;
+  }
+
+  const response = await connectedSigner.chat.group.create(title, {
+    description: description,
+    image: image || '',
+    private: false,
+  });
+
+  if (!response) {
+    console.log('Error creating channel');
+    return;
+  }
+
+  console.log('Channel created', response);
+};
+
 export const GoLiveFooter: React.FC = () => {
   const {watch, setValue, getValues} = useFormContext();
   const {reviewCheck} = watch();
   const {t} = useTranslation();
   const {open} = useGlobalModalContext();
-  const {isConnected, provider, isOnWrongNetwork} = useWallet();
+  const {isConnected, provider, isOnWrongNetwork, signer} = useWallet();
+  const {daoName, daoSummary} = getValues();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -86,11 +120,12 @@ export const GoLiveFooter: React.FC = () => {
         governance_type: getValues('membership'),
       });
 
-    if (isConnected) {
+    if (isConnected && signer) {
       if (isOnWrongNetwork) {
         open('network');
       } else {
         setIsDialogOpen(true);
+        createPushChannel(signer, daoName, daoSummary);
       }
     } else {
       open('wallet');
