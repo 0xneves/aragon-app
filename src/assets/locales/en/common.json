@@ -161,6 +161,7 @@
     "review": {
       "blockchain": "Blockchain",
       "daoMetadata": "DAO",
+      "daoPushGroup": "DAO Push Group",
       "voters": "Voters",
       "votingParameters": "Voting parameters",
       "governance": "Governance",

@@ -11,6 +11,7 @@ import Blockchain from './blockchain';
 import DaoMetadata from './daoMetadata';
 import Community from './community';
 import Governance from './governance';
+import DaoPushGroup from './daoPushGroup';
 import goLive from 'assets/images/goLive.svg';
 import {Landing} from 'utils/paths';
 import {useWallet} from 'hooks/useWallet';
@@ -18,6 +19,7 @@ import {useGlobalModalContext} from 'context/globalModals';
 import {trackEvent} from 'services/analytics';
 import Committee from './committee';
 import {CreateDaoDialog} from 'containers/createDaoDialog';
+import {convertToBase64} from 'utils/imageConverter';
 
 export const GoLiveHeader: React.FC = () => {
   const {t} = useTranslation();
@@ -62,6 +64,7 @@ const GoLive: React.FC = () => {
       <DaoMetadata />
       <Community />
       <Governance />
+      <DaoPushGroup />
       {votingType === 'gasless' && <Committee />}
       <AlertCard message={t('createDAO.review.daoUpdates')} variant="info" />
     </div>
@@ -72,22 +75,25 @@ const createPushChannel = async (
   signer: JsonRpcSigner,
   title: string,
   description: string,
-  image: string
+  image: File
 ) => {
   const connectedSigner = await PushAPI.initialize(signer, {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    env: 'prod',
+    env: import.meta.env.VITE_PUSH_ENV,
   });
 
   if (!connectedSigner) {
     console.log('Error connecting to Push API');
     return;
   }
-
+  console.log('VITE_PUSH_ENV', import.meta.env.VITE_PUSH_ENV);
+  console.log('image', image);
+  const imageBase64 = await convertToBase64(image);
+  console.log('imageBase64', imageBase64);
   const response = await connectedSigner.chat.group.create(title, {
     description: description,
-    image: image || '',
+    image: imageBase64 || '',
     private: false,
   });
 
@@ -105,7 +111,7 @@ export const GoLiveFooter: React.FC = () => {
   const {t} = useTranslation();
   const {open} = useGlobalModalContext();
   const {isConnected, provider, isOnWrongNetwork, signer} = useWallet();
-  const {daoName, daoSummary} = getValues();
+  const {daoName, daoSummary, daoLogo} = getValues();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -125,7 +131,7 @@ export const GoLiveFooter: React.FC = () => {
         open('network');
       } else {
         setIsDialogOpen(true);
-        createPushChannel(signer, daoName, daoSummary);
+        createPushChannel(signer, daoName, daoSummary, daoLogo);
       }
     } else {
       open('wallet');
